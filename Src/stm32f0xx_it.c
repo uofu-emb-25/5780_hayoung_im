@@ -104,17 +104,16 @@ void SysTick_Handler(void) {
   *         - Toggles PC8 (Green LED) and PC9 (Orange LED).
   *         - Simulates a long-running interrupt if needed.
   */
-void EXTI0_1_IRQHandler(void) {
-  if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0) != RESET) {
-    // Toggle Green (PC8) and Orange (PC9) LEDs
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_9);
+ void EXTI0_1_IRQHandler(void) {
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
 
-    // Simulate a long-running interrupt (1.5 seconds delay)
-    // Uncomment the below line when testing long-running interrupts
-    for (volatile int i = 0; i < 6000000; i++);
+  for (volatile uint32_t i =0; i< 7200000; i++);
+}
 
-    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+  if (GPIO_Pin == GPIO_PIN_0) {
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8);
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_9);
   }
 }
 
