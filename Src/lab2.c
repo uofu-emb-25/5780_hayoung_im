@@ -10,32 +10,22 @@ volatile uint32_t tick_count = 0;
  *        - The Blue LED (PC7) toggles every 200ms inside the SysTick interrupt.
  */
 void lab2_SysTick_Timer(void) {
-    // Initialize the HAL library
     HAL_Init();
-
-    // Configure the system clock
     SystemClock_Config();
 
-    // Enable GPIOC clock
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
-    // Configure PC6 (Red LED) and PC7 (Blue LED) as output
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    // Corrected function usage
+    MY_HAL_GPIO_Init(GPIOC, GPIO_PIN_6 | GPIO_PIN_7, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_LOW);
 
-    // Configure SysTick to trigger every 1ms
     HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
 
     while (1) {
-        // Toggle Red LED (PC6) every 500ms
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
-        HAL_Delay(500);  // 500ms delay
+        HAL_Delay(500);
     }
 }
+
 
 /**
  * @brief Configures EXTI (External Interrupt) to toggle LEDs when a button is pressed.
@@ -44,38 +34,27 @@ void lab2_SysTick_Timer(void) {
  *        - EXTI interrupt is enabled and configured.
  */
 void lab2_Interrupt_Toggle(void) {
-    // Initialize the HAL library
     HAL_Init();
     SystemClock_Config();
 
-    // Enable GPIOA, GPIOC, and SYSCFG clocks (needed for EXTI configuration)
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_SYSCFG_CLK_ENABLE();
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    // Configure PA0 as input with EXTI
+    MY_HAL_GPIO_Init(GPIOA, GPIO_PIN_0, GPIO_MODE_IT_RISING, GPIO_PULLDOWN, 0);
 
-    // Configure PA0 (Button) as an input with interrupt
-    GPIO_InitStruct.Pin = GPIO_PIN_0;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; // Interrupt on rising edge (button press)
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;       // Enable internal pull-down resistor
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    // Configure PC8 and PC9 as output LEDs
+    MY_HAL_GPIO_Init(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_LOW);
 
-    // Configure PC8 and PC9 (LEDs) as output
-    GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-    // Enable EXTI (External Interrupt) for PA0
-    HAL_NVIC_SetPriority(EXTI0_1_IRQn, 1, 0); // Set high priority for EXTI0
-    HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);        // Enable EXTI0 interrupt
+    HAL_NVIC_SetPriority(EXTI0_1_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
 
     while (1) {
-        // Main loop remains idle, as the button interrupt controls LED toggling
+        // Interrupt toggles LEDs
     }
 }
+
 
 /**
  * @brief Changes interrupt priorities for SysTick and EXTI to analyze behavior.
@@ -84,45 +63,30 @@ void lab2_Interrupt_Toggle(void) {
  *        - EXTI (button) toggles Green LED (PC8) and Orange LED (PC9).
  */
 void lab2_Interrupt_Priority(void) {
-    // Initialize HAL & System Clock
     HAL_Init();
     SystemClock_Config();
 
-    // Enable GPIOA, GPIOC, and SYSCFG clocks
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_SYSCFG_CLK_ENABLE();
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    // Configure PA0 as input with EXTI
+    MY_HAL_GPIO_Init(GPIOA, GPIO_PIN_0, GPIO_MODE_IT_RISING, GPIO_PULLDOWN, 0);
 
-    // Configure PA0 (Button) as input with EXTI
-    GPIO_InitStruct.Pin = GPIO_PIN_0;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    // Configure all LEDs
+    MY_HAL_GPIO_Init(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_LOW);
 
-    // Configure LEDs
-    GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-    // Configure SysTick to trigger every 1ms first
     HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
-    // Set SysTick priority to 2 (Medium)
     HAL_NVIC_SetPriority(SysTick_IRQn, 2, 0);
-
-    // Set EXTI0 priority to 3 (Low)
     HAL_NVIC_SetPriority(EXTI0_1_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
 
     while (1) {
-        // Toggle Red LED (PC6) every 500ms
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         HAL_Delay(500);
     }
 }
+
 
 
 

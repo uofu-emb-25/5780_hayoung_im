@@ -9,15 +9,47 @@ void My_HAL_RCC_GPIOC_CLK_ENABLE(void) {
 }
 
 
-void My_HAL_GPIO_Init(void) {
-    // Set PC6, PC7 as output (Red & Blue LEDs)
-    GPIOC->MODER &= ~(GPIO_MODER_MODER6 | GPIO_MODER_MODER7);
-    GPIOC->MODER |= (GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
+// GPIO 초기화 함수 (수정 버전)
+void MY_HAL_GPIO_Init(GPIO_TypeDef *GPIOx, uint32_t PinMask, uint32_t Mode, uint32_t Pull, uint32_t Speed) {
+    for (uint8_t pin = 0; pin < 16; pin++) {
+        if (PinMask & (1 << pin)) {
+            // MODER 설정
+            GPIOx->MODER &= ~(0b11 << (pin * 2));
+            GPIOx->MODER |= ((Mode & 0b11) << (pin * 2));
 
-    GPIOC->OTYPER &= ~(GPIO_OTYPER_OT_6 | GPIO_OTYPER_OT_7);
-    GPIOC->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR6 | GPIO_OSPEEDER_OSPEEDR7);
-    GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR6 | GPIO_PUPDR_PUPDR7);
+            // OTYPER 설정 (Push-Pull Only)
+            GPIOx->OTYPER &= ~(1 << pin);
+
+            // OSPEEDR 설정
+            GPIOx->OSPEEDR &= ~(0b11 << (pin * 2));
+            GPIOx->OSPEEDR |= ((Speed & 0b11) << (pin * 2));
+
+            // PUPDR 설정
+            GPIOx->PUPDR &= ~(0b11 << (pin * 2));
+            GPIOx->PUPDR |= ((Pull & 0b11) << (pin * 2));
+
+            // EXTI 라우팅 설정 (인터럽트 모드인 경우)
+            if (Mode == GPIO_MODE_IT_RISING || Mode == GPIO_MODE_IT_FALLING || Mode == GPIO_MODE_IT_RISING_FALLING) {
+                uint8_t portSource = 0;
+                if (GPIOx == GPIOA) portSource = 0;
+                else if (GPIOx == GPIOB) portSource = 1;
+                else if (GPIOx == GPIOC) portSource = 2;
+                // 다른 포트 필요시 추가
+
+                SYSCFG->EXTICR[pin / 4] &= ~(0xF << (4 * (pin % 4)));
+                SYSCFG->EXTICR[pin / 4] |= (portSource << (4 * (pin % 4)));
+            }
+        }
+    }
+
+    // EXTI 인터럽트 활성화 (Rising Edge)
+    if (Mode == GPIO_MODE_IT_RISING) {
+        EXTI->RTSR |= PinMask;
+        EXTI->IMR |= PinMask;
+    }
 }
+
+
 
 
 
