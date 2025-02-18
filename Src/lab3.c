@@ -55,7 +55,7 @@ void TIM2_Init(void) {
 
     // Configure TIM2 parameters
     htim2.Instance = TIM2;
-    htim2.Init.Prescaler = 2999; 
+    htim2.Init.Prescaler = 5999; 
     htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
     htim2.Init.Period = 1999;      
     htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
