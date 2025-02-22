@@ -85,7 +85,9 @@ void TIM2_IRQHandler(void) {
 // --------------- Lab 3.3: PWM Generation using TIM3 (Interrupt-Based) ---------------
 void lab3_3_PWMGeneration(void) {
     HAL_Init();
+
     SystemClock_Config();    // System clock setup; assume 8MHz on APB1
+
 
     // Configure & start TIM3 in PWM mode on PC6/PC7 
     lab3_PWM_Init();

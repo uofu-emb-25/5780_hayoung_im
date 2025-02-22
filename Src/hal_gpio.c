@@ -3,9 +3,12 @@
 #include <stm32f0xx_hal_gpio.h>
 #include "main.h"
 
+void My_HAL_RCC_GPIOA_CLK_ENABLE(void) {
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+}
+
 void My_HAL_RCC_GPIOC_CLK_ENABLE(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
-
 }
 
 
@@ -66,12 +69,10 @@ void My_HAL_GPIO_DeInit(GPIO_TypeDef  *GPIOx, uint32_t GPIO_Pin)
 }
 */
 
-
 GPIO_PinState My_HAL_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
     return (GPIOx->IDR & GPIO_Pin) ? GPIO_PIN_SET : GPIO_PIN_RESET;
 }
-
 
 void My_HAL_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
 {
@@ -86,4 +87,3 @@ void My_HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
     GPIOx->ODR ^= GPIO_Pin;
 }
-
