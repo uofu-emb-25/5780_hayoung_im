@@ -21,6 +21,8 @@
 #include <stm32f0xx_hal.h>
 #include <stm32f0xx_it.h>
 
+extern UART_HandleTypeDef huart1;
+
 /******************************************************************************/
 /*            Cortex-M0 Processor Exceptions Handlers                         */
 /******************************************************************************/
@@ -76,10 +78,6 @@ void SysTick_Handler(void) {
   static uint32_t local_tick = 0;
   local_tick++;
 
-  // Toggle Blue LED (PC7) every 200ms
-  if (local_tick % 200 == 0) {
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_7);
-  }
 }
 
 
@@ -106,8 +104,6 @@ void SysTick_Handler(void) {
   */
  void EXTI0_1_IRQHandler(void) {
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-
-  for (volatile uint32_t i =0; i< 7200000; i++);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -117,3 +113,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 }
 
+void USART1_IRQHandler(void) {
+  HAL_UART_IRQHandler(&huart1);
+}
