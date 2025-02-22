@@ -20,6 +20,7 @@ void GPIO_Init(void);
 void UART1_GPIO_Init(void);
 void UART1_Init(void);
 void Blocking_Reception(void);
+void Interrupt_Reception(void);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void Process_Command(uint8_t color, uint8_t action);
 
@@ -35,9 +36,21 @@ int lab4_main(void)
     // 3) Initialize UART1
     UART1_Init();
 
-    // 4) blocking reception
-    Blocking_Reception();
+    // 4) Choose between blocking or interrupt reception
+    //Blocking_Reception();
+     Interrupt_Reception();
 
+    // 5) Main loop
+    while (1) {
+        // Check if data is ready (only used in interrupt mode)
+        if (data_ready) {
+            HAL_UART_Transmit(&huart1, received_data, 2, HAL_MAX_DELAY);
+            Process_Command(received_data[0], received_data[1]);
+            HAL_UART_Transmit(&huart1, (uint8_t *)"\r\nCMD?", 6, HAL_MAX_DELAY);
+            HAL_UART_Transmit(&huart1, (uint8_t *)"\r\n", 2, HAL_MAX_DELAY);
+            data_ready = 0;
+        }
+    }
 }
 
 
@@ -139,3 +152,53 @@ void UART1_Init(void)
        }
    }
    
+
+/* -------------------------------------------------------
+   Interrupt_Reception: Prompt and receive 2 bytes
+   (e.g. 'r0', 'b2') via interrupt mode.
+   ------------------------------------------------------- */
+void Interrupt_Reception(void)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t *)"CMD?\r\n", 6, HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, received_data, 2);
+}
+
+/* -------------------------------------------------------
+   HAL_UART_RxCpltCallback: Called when 2 bytes are received
+   (non-blocking). Sets a flag for main loop processing.
+   ------------------------------------------------------- */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1) {
+        data_ready = 1;
+        HAL_UART_Receive_IT(&huart1, received_data, 2);
+    }
+}
+
+/* -------------------------------------------------------
+   Process_Command: Interprets 'r'/'b' + '0','1','2' to
+   control LEDs on PC6 or PC7.
+   ------------------------------------------------------- */
+void Process_Command(uint8_t color, uint8_t action)
+{
+    uint16_t led_pin;
+
+    if (color == 'r') {
+        led_pin = RED_LED_PIN;
+    } else if (color == 'b') {
+        led_pin = BLUE_LED_PIN;
+    } else {
+        HAL_UART_Transmit(&huart1, (uint8_t *)"Invalid Command\r\n", 17, HAL_MAX_DELAY);
+        return;
+    }
+
+    if (action == '0') {
+        My_HAL_GPIO_WritePin(LED_PORT, led_pin, GPIO_PIN_RESET);
+    } else if (action == '1') {
+        My_HAL_GPIO_WritePin(LED_PORT, led_pin, GPIO_PIN_SET);
+    } else if (action == '2') {
+        My_HAL_GPIO_TogglePin(LED_PORT, led_pin);
+    } else {
+        HAL_UART_Transmit(&huart1, (uint8_t *)"Invalid Command\r\n", 17, HAL_MAX_DELAY);
+    }
+}
