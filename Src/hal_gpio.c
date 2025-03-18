@@ -7,6 +7,10 @@ void My_HAL_RCC_GPIOA_CLK_ENABLE(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
 }
 
+void My_HAL_RCC_GPIOB_CLK_ENABLE(void) {
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+}
+
 void My_HAL_RCC_GPIOC_CLK_ENABLE(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 }
@@ -52,9 +56,22 @@ void MY_HAL_GPIO_Init(GPIO_TypeDef *GPIOx, uint32_t PinMask, uint32_t Mode, uint
 
                 SYSCFG->EXTICR[pin / 4] &= ~(0xF << (4 * (pin % 4)));
                 SYSCFG->EXTICR[pin / 4] |= (portSource << (4 * (pin % 4)));
+
+                if (Mode == GPIO_MODE_IT_RISING) {
+                    EXTI->RTSR |= (1 << pin);
+                    EXTI->IMR |= (1 << pin);
+                } else if (Mode == GPIO_MODE_IT_FALLING) {
+                    EXTI->FTSR |= (1 << pin);
+                    EXTI->IMR |= (1 << pin);
+                } else if (Mode == GPIO_MODE_IT_RISING_FALLING) {
+                    EXTI->RTSR |= (1 << pin);
+                    EXTI->FTSR |= (1 << pin);
+                    EXTI->IMR |= (1 << pin);
+                }
             }
         }
     }
+
 
     // EXTI Rising
     if (Mode == GPIO_MODE_IT_RISING) {
