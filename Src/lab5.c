@@ -93,6 +93,101 @@ void Write_Register(void) {
     Read_Register();
 }
 
+// ----------------- Second Part Code: Sensor Configuration and Angular Rate Reading -----------------
+
+// Function to configure the gyroscope into measurement mode by writing to CTRL_REG1
+void Configure_Gyro(void) {
+    uint8_t config = 0x0F;  // Example: normal mode, all axes enabled (check datasheet for proper value)
+    uint32_t timeout;
+
+    // Configure I2C2 for writing 2 bytes: first byte is CTRL_REG1 (0x20), second is config value
+    I2C2->CR2 = (GYRO_ADDRESS & ~(1 << I2C_CR2_RD_WRN_Pos))
+              | (2 << I2C_CR2_NBYTES_Pos)   // 2 bytes to write
+              | (1 << I2C_CR2_START_Pos);     // Generate START condition
+
+    timeout = 100000;
+    while (!(I2C2->ISR & (I2C_ISR_TXIS | I2C_ISR_NACKF)) && --timeout);
+    if (timeout == 0 || (I2C2->ISR & I2C_ISR_NACKF)) {
+        I2C2->ICR = I2C_ICR_NACKCF;
+        I2C2->CR2 |= I2C_CR2_STOP;
+        return;
+    }
+    // Send CTRL_REG1 register address (0x20)
+    I2C2->TXDR = 0x20;
+
+    timeout = 100000;
+    while (!(I2C2->ISR & (I2C_ISR_TXIS | I2C_ISR_NACKF)) && --timeout);
+    if (timeout == 0 || (I2C2->ISR & I2C_ISR_NACKF)) {
+        I2C2->ICR = I2C_ICR_NACKCF;
+        I2C2->CR2 |= I2C_CR2_STOP;
+        return;
+    }
+    // Send configuration value
+    I2C2->TXDR = config;
+
+    timeout = 100000;
+    while (!(I2C2->ISR & I2C_ISR_TC) && --timeout);
+    I2C2->CR2 |= I2C_CR2_STOP;
+}
+
+// Function to read angular rate data (X, Y, Z) and update LEDs based on tilt thresholds
+void Read_Angular_Rate_And_Update_LEDs(void) {
+    uint8_t buffer[6];
+    uint32_t timeout;
+    uint8_t idx = 0;
+
+    // Step 1: Write starting register address (OUT_X_L with auto-increment)
+    I2C2->CR2 = (GYRO_ADDRESS & ~(1 << I2C_CR2_RD_WRN_Pos))
+              | (1 << I2C_CR2_NBYTES_Pos)   // 1 byte to write
+              | (1 << I2C_CR2_START_Pos);     // Generate START condition
+    timeout = 100000;
+    while (!(I2C2->ISR & (I2C_ISR_TXIS | I2C_ISR_NACKF)) && --timeout);
+    if (timeout == 0 || (I2C2->ISR & I2C_ISR_NACKF)) {
+        I2C2->ICR = I2C_ICR_NACKCF;
+        I2C2->CR2 |= I2C_CR2_STOP;
+        return;
+    }
+    I2C2->TXDR = OUT_X_L; // Send OUT_X_L register address (with auto-increment)
+
+    timeout = 100000;
+    while (!(I2C2->ISR & I2C_ISR_TC) && --timeout);
+    I2C2->CR2 |= I2C_CR2_STOP; // End write phase
+
+    // Step 2: Read 6 bytes from sensor (X, Y, Z: each axis low and high bytes)
+    I2C2->CR2 = GYRO_ADDRESS
+              | (1 << I2C_CR2_RD_WRN_Pos)      // Set to read mode
+              | (6 << I2C_CR2_NBYTES_Pos)      // 6 bytes to read
+              | (1 << I2C_CR2_START_Pos);      // Generate START condition
+    timeout = 100000;
+    idx = 0;
+    while (idx < 6) {
+        while (!(I2C2->ISR & (I2C_ISR_RXNE | I2C_ISR_NACKF)) && --timeout);
+        if (timeout == 0) break;
+        buffer[idx++] = I2C2->RXDR;
+    }
+    I2C2->CR2 |= I2C_CR2_STOP; // End read phase
+
+    // Step 3: Convert the 6 bytes into 16-bit signed values (little-endian order)
+    int16_t x = (int16_t)((buffer[1] << 8) | buffer[0]);
+    int16_t y = (int16_t)((buffer[3] << 8) | buffer[2]);
+    int16_t z = (int16_t)((buffer[5] << 8) | buffer[4]);
+
+    // Clear all LED outputs (optional)
+    HAL_GPIO_WritePin(GPIOC, RED | BLUE | GREEN | ORANGE, GPIO_PIN_RESET);
+
+    // Update LED status based on tilt thresholds:
+    // For instance, if x, y, or z exceed TILT_THRESHOLD, turn on the corresponding LED.
+    if (x > TILT_THRESHOLD) {
+        HAL_GPIO_WritePin(GPIOC, RED, GPIO_PIN_SET);   // X tilt positive → RED LED
+    }
+    if (y > TILT_THRESHOLD) {
+        HAL_GPIO_WritePin(GPIOC, BLUE, GPIO_PIN_SET);    // Y tilt positive → BLUE LED
+    }
+    if (z > TILT_THRESHOLD) {
+        HAL_GPIO_WritePin(GPIOC, GREEN, GPIO_PIN_SET);   // Z tilt positive → GREEN LED
+    }
+}
+
 // ----------------- Main Function -----------------
 
 int lab5_main(void) {
@@ -131,11 +226,17 @@ int lab5_main(void) {
     Write_Register();
     HAL_Delay(1000);  // Wait to observe LED (GREEN should be on if WHO_AM_I is correct)
 
-  
+    // Configure sensor into measurement mode (Part 2)
+    Configure_Gyro();
+    HAL_Delay(1000);  // Allow sensor configuration to take effect
+
     // Main loop: read angular rate data and update LEDs based on tilt thresholds (Part 2)
     while (1) {
         // Clear LED status before each measurement
         HAL_GPIO_WritePin(GPIOC, RED | BLUE | GREEN | ORANGE, GPIO_PIN_RESET);
+        
+        // Read angular rate data and update LED status
+        Read_Angular_Rate_And_Update_LEDs();
         
         HAL_Delay(1000);  // Delay to observe LED changes
     }
