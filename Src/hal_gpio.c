@@ -78,6 +78,7 @@ void MY_HAL_GPIO_Init(GPIO_TypeDef *GPIOx, uint32_t PinMask, uint32_t Mode, uint
         EXTI->RTSR |= PinMask;
         EXTI->IMR  |= PinMask;
     }
+
 }
 
 /*
