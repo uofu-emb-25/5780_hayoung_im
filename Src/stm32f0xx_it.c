@@ -20,6 +20,8 @@
 #include "main.h"
 #include <stm32f0xx_hal.h>
 #include <stm32f0xx_it.h>
+#include "hal_gpio.h"
+extern void Lab7_Systick_Callback(void);
 
 extern UART_HandleTypeDef huart1;
 
@@ -75,8 +77,10 @@ void PendSV_Handler(void)
 void SysTick_Handler(void) {
   HAL_IncTick();  // Increment global tick
 
-  static uint32_t local_tick = 0;
-  local_tick++;
+  //static uint32_t local_tick = 0;
+  //local_tick++;
+
+  Lab7_Systick_Callback();
 
 }
 
